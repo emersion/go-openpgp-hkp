@@ -2,6 +2,7 @@ package hkp
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 
@@ -9,7 +10,10 @@ import (
 	"golang.org/x/crypto/openpgp/armor"
 )
 
-var ErrNotFound = errors.New("hkp: not found")
+var (
+	ErrNotFound = errors.New("hkp: not found")
+	ErrForbidden = errors.New("hkp: forbidden")
+)
 
 type LookupOptions struct {
 	NoModification bool
@@ -26,13 +30,33 @@ type Lookuper interface {
 	Index(req *LookupRequest) ([]IndexKey, error)
 }
 
+type Adder interface {
+	Add(el openpgp.EntityList) error
+}
+
+func httpError(w http.ResponseWriter, err error) {
+	switch err {
+	case ErrNotFound:
+		http.NotFound(w, nil)
+	case ErrForbidden:
+		http.Error(w, err.Error(), http.StatusForbidden)
+	default:
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 type Handler struct {
 	Lookuper Lookuper
+	Adder Adder
 }
 
 func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if h.Lookuper == nil {
+		http.Error(w, "Not Implemented", http.StatusNotImplemented)
 		return
 	}
 
@@ -56,11 +80,8 @@ func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
 	switch op {
 	case "get":
 		e, err := h.Lookuper.Get(&req)
-		if err == ErrNotFound {
-			http.NotFound(w, r)
-			return
-		} else if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err != nil {
+			httpError(w, err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/pgp-keys")
@@ -75,7 +96,7 @@ func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
 	case "index", "vindex":
 		res, err := h.Lookuper.Index(&req)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httpError(w, err)
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain")
@@ -83,13 +104,52 @@ func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 	default:
-		http.Error(w, "501 Not Implemented", http.StatusNotImplemented)
+		http.Error(w, "Not Implemented", http.StatusNotImplemented)
 	}
 }
 
 func (h *Handler) serveAdd(w http.ResponseWriter, r *http.Request) {
-	// TODO
-	http.Error(w, "501 Not Implemented", http.StatusNotImplemented)
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if h.Adder == nil {
+		http.Error(w, "Not Implemented", http.StatusNotImplemented)
+		return
+	}
+
+	mr, err := r.MultipartReader()
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+
+	var el openpgp.EntityList
+	for {
+		p, err := mr.NextPart()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			httpError(w, err)
+			return
+		}
+
+		if p.FormName() == "keytext" {
+			el, err = openpgp.ReadArmoredKeyRing(p)
+			if err != nil {
+				httpError(w, err)
+				return
+			}
+			break
+		}
+	}
+
+	r.Body.Close()
+
+	if err := h.Adder.Add(el); err != nil {
+		httpError(w, err)
+		return
+	}
 }
 
 // ServeHTTP implements http.Handler.
@@ -99,5 +159,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveLookup(w, r)
 	case addPath:
 		h.serveAdd(w, r)
+	default:
+		http.Error(w, "Not Implemented", http.StatusNotImplemented)
 	}
 }
