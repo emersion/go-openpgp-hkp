@@ -31,6 +31,11 @@ type Handler struct {
 }
 
 func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	q := r.URL.Query()
 	op := q.Get("op")
 
