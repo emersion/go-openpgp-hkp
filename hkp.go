@@ -2,7 +2,10 @@
 // https://tools.ietf.org/html/draft-shaw-openpgp-hkp-00
 package hkp
 
+// Base is the base path for the HTTP API.
+const Base = "/pks"
+
 const (
-	lookupPath = "/pks/lookup"
-	addPath = "/pks/add"
+	lookupPath = Base + "/lookup"
+	addPath = Base + "/add"
 )

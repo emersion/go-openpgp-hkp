@@ -3,6 +3,7 @@ package hkp
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
@@ -10,11 +11,19 @@ import (
 
 var ErrNotFound = errors.New("hkp: not found")
 
-type LookupRequest struct {}
+type LookupOptions struct {
+	NoModification bool
+}
+
+type LookupRequest struct {
+	Search string
+	Options LookupOptions
+	Exact bool
+}
 
 type Lookuper interface {
-	Get(search string) (*openpgp.Entity, error)
-	Index(search string) ([]IndexKey, error)
+	Get(req *LookupRequest) (*openpgp.Entity, error)
+	Index(req *LookupRequest) ([]IndexKey, error)
 }
 
 type Handler struct {
@@ -24,12 +33,24 @@ type Handler struct {
 func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	op := q.Get("op")
-	search := q.Get("search")
-	// options := q.Get("options") // TODO
+
+	optionsList := strings.Split(q.Get("options"), ",")
+	options := make(map[string]bool)
+	for _, opt := range optionsList {
+		options[opt] = true
+	}
+
+	req := LookupRequest{
+		Search: q.Get("search"),
+		Options: LookupOptions{
+			NoModification: options["nm"],
+		},
+		Exact: q.Get("exact") == "on",
+	}
 
 	switch op {
 	case "get":
-		e, err := h.Lookuper.Get(search)
+		e, err := h.Lookuper.Get(&req)
 		if err == ErrNotFound {
 			http.NotFound(w, r)
 			return
@@ -46,8 +67,8 @@ func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
 		if err := e.Serialize(aw); err != nil {
 			panic(err)
 		}
-	case "index":
-		res, err := h.Lookuper.Index(search)
+	case "index", "vindex":
+		res, err := h.Lookuper.Index(&req)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -56,7 +77,6 @@ func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
 		if err := WriteIndex(w, res); err != nil {
 			panic(err)
 		}
-	case "vindex":
 	default:
 		http.Error(w, "501 Not Implemented", http.StatusNotImplemented)
 	}
