@@ -86,7 +86,7 @@ func (c *Client) Index(req *LookupRequest) ([]IndexKey, error) {
 		return nil, fmt.Errorf("hkp: failed to get index: %v %v", resp.StatusCode, resp.Status)
 	}
 
-	return ReadIndex(resp.Body)
+	return readIndex(resp.Body)
 }
 
 func (c *Client) Get(req *LookupRequest) (openpgp.EntityList, error) {

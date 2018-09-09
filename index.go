@@ -25,7 +25,7 @@ const (
 	IndexKeyExpired
 )
 
-func ParseIndexFlags(s string) (IndexFlags, error) {
+func parseIndexFlags(s string) (IndexFlags, error) {
 	var res IndexFlags
 	for _, r := range []rune(s) {
 		switch r {
@@ -40,7 +40,7 @@ func ParseIndexFlags(s string) (IndexFlags, error) {
 	return res, nil
 }
 
-func (flags IndexFlags) String() string {
+func (flags IndexFlags) format() string {
 	var res []rune
 	if flags&IndexKeyRevoked != 0 {
 		res = append(res, 'r')
@@ -95,8 +95,8 @@ func IndexKeyFromEntity(e *openpgp.Entity) (*IndexKey, error) {
 	}, nil
 }
 
-// WriteIndex writes a machine-readable key index to w.
-func WriteIndex(w io.Writer, keys []IndexKey) error {
+// writeIndex writes a machine-readable key index to w.
+func writeIndex(w io.Writer, keys []IndexKey) error {
 	_, err := fmt.Fprintf(w, "info:%d:%d\n", indexVersion, len(keys))
 	if err != nil {
 		return err
@@ -107,7 +107,7 @@ func WriteIndex(w io.Writer, keys []IndexKey) error {
 		// TODO: expiration time, if any
 		_, err = fmt.Fprintf(w, "pub:%s:%d:%d:%d:%s:%s\n",
 			fingerprint, key.Algo, key.BitLength, key.CreationTime.Unix(),
-			"", key.Flags.String())
+			"", key.Flags.format())
 		if err != nil {
 			return err
 		}
@@ -116,7 +116,7 @@ func WriteIndex(w io.Writer, keys []IndexKey) error {
 			name := url.PathEscape(ident.Name)
 			// TODO: expiration time, if any
 			_, err = fmt.Fprintf(w, "uid:%s:%d:%s:%s\n",
-				name, ident.CreationTime.Unix(), "", ident.Flags.String())
+				name, ident.CreationTime.Unix(), "", ident.Flags.format())
 			if err != nil {
 				return err
 			}
@@ -126,7 +126,7 @@ func WriteIndex(w io.Writer, keys []IndexKey) error {
 	return nil
 }
 
-func ReadIndex(r io.Reader) ([]IndexKey, error) {
+func readIndex(r io.Reader) ([]IndexKey, error) {
 	scanner := bufio.NewScanner(r)
 	if !scanner.Scan() {
 		if err := scanner.Err(); err != nil {
@@ -185,7 +185,7 @@ func ReadIndex(r io.Reader) ([]IndexKey, error) {
 			if err != nil {
 				return keys, err
 			}
-			flags, err := ParseIndexFlags(fields[6])
+			flags, err := parseIndexFlags(fields[6])
 			if err != nil {
 				return keys, err
 			}
@@ -213,7 +213,7 @@ func ReadIndex(r io.Reader) ([]IndexKey, error) {
 			if err != nil {
 				return keys, err
 			}
-			flags, err := ParseIndexFlags(fields[4])
+			flags, err := parseIndexFlags(fields[4])
 			if err != nil {
 				return keys, err
 			}

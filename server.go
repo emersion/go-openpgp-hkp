@@ -77,7 +77,7 @@ func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain")
-		if err := WriteIndex(w, res); err != nil {
+		if err := writeIndex(w, res); err != nil {
 			panic(err)
 		}
 	default:
