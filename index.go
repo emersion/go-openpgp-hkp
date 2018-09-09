@@ -153,6 +153,10 @@ func ReadIndex(r io.Reader) ([]IndexKey, error) {
 
 	var keys []IndexKey
 	for scanner.Scan() {
+		if scanner.Text() == "" {
+			continue
+		}
+
 		fields := strings.Split(scanner.Text(), ":")
 		switch fields[0] {
 		case "pub":
