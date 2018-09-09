@@ -15,7 +15,7 @@ var (
 )
 
 type Lookuper interface {
-	Get(req *LookupRequest) (*openpgp.Entity, error)
+	Get(req *LookupRequest) (openpgp.EntityList, error)
 	Index(req *LookupRequest) ([]IndexKey, error)
 }
 
@@ -59,19 +59,24 @@ func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
 
 	switch q.Get("op") {
 	case "get":
-		e, err := h.Lookuper.Get(&req)
+		l, err := h.Lookuper.Get(&req)
 		if err != nil {
 			httpError(w, err)
 			return
+		} else if len(l) == 0 {
+			http.NotFound(w, r)
+			return
 		}
 		w.Header().Set("Content-Type", "application/pgp-keys")
-		aw, err := armor.Encode(w, "PGP PUBLIC KEY BLOCK", nil)
+		aw, err := armor.Encode(w, openpgp.PublicKeyType, nil)
 		if err != nil {
 			panic(err)
 		}
 		defer aw.Close()
-		if err := e.Serialize(aw); err != nil {
-			panic(err)
+		for _, e := range l {
+			if err := e.Serialize(aw); err != nil {
+				panic(err)
+			}
 		}
 	case "index", "vindex":
 		res, err := h.Lookuper.Index(&req)

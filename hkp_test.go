@@ -24,8 +24,8 @@ func init() {
 
 type mockBackend struct {}
 
-func (mb *mockBackend) Get(req *hkp.LookupRequest) (*openpgp.Entity, error) {
-	return stallmanPubkey[0], nil
+func (mb *mockBackend) Get(req *hkp.LookupRequest) (openpgp.EntityList, error) {
+	return stallmanPubkey, nil
 }
 
 func (mb *mockBackend) Index(req *hkp.LookupRequest) ([]hkp.IndexKey, error) {
