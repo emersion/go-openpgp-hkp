@@ -45,7 +45,7 @@ func TestHandler_lookup(t *testing.T) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 
-	c := hkp.Client{Host: ts.URL}
+	c := hkp.Client{Host: ts.URL, Insecure: true}
 
 	req := hkp.LookupRequest{Search: "stallman"}
 	index, err := c.Index(&req)
@@ -81,7 +81,7 @@ func TestHandler_get(t *testing.T) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 
-	c := hkp.Client{Host: ts.URL}
+	c := hkp.Client{Host: ts.URL, Insecure: true}
 
 	req := hkp.LookupRequest{Search: "stallman"}
 	keys, err := c.Get(&req)

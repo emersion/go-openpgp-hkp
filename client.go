@@ -17,6 +17,9 @@ type Client struct {
 
 func (c *Client) hostURL() (*url.URL, error) {
 	if u, err := url.Parse(c.Host); err == nil {
+		if !c.Insecure && u.Scheme != "https" {
+			return nil, fmt.Errorf("hkp: refusing to connect to non-HTTPS keyserver")
+		}
 		return u, nil
 	}
 
