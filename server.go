@@ -2,11 +2,10 @@ package hkp
 
 import (
 	"errors"
-	"io"
 	"net/http"
+	"strings"
 
 	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
 )
 
 var (
@@ -59,24 +58,17 @@ func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
 
 	switch q.Get("op") {
 	case "get":
-		l, err := h.Lookuper.Get(&req)
+		el, err := h.Lookuper.Get(&req)
 		if err != nil {
 			httpError(w, err)
 			return
-		} else if len(l) == 0 {
+		} else if len(el) == 0 {
 			http.NotFound(w, r)
 			return
 		}
 		w.Header().Set("Content-Type", "application/pgp-keys")
-		aw, err := armor.Encode(w, openpgp.PublicKeyType, nil)
-		if err != nil {
+		if err := serializeArmoredKeyRing(w, el); err != nil {
 			panic(err)
-		}
-		defer aw.Close()
-		for _, e := range l {
-			if err := e.Serialize(aw); err != nil {
-				panic(err)
-			}
 		}
 	case "index", "vindex":
 		res, err := h.Lookuper.Index(&req)
@@ -103,30 +95,20 @@ func (h *Handler) serveAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mr, err := r.MultipartReader()
-	if err != nil {
+	if err := r.ParseForm(); err != nil {
 		httpError(w, err)
 		return
 	}
 
-	var el openpgp.EntityList
-	for {
-		p, err := mr.NextPart()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			httpError(w, err)
-			return
-		}
+	s := r.FormValue("keytext")
+	if s == "" {
+		return
+	}
 
-		if p.FormName() == "keytext" {
-			el, err = openpgp.ReadArmoredKeyRing(p)
-			if err != nil {
-				httpError(w, err)
-				return
-			}
-			break
-		}
+	el, err := openpgp.ReadArmoredKeyRing(strings.NewReader(s))
+	if err != nil {
+		httpError(w, err)
+		return
 	}
 
 	r.Body.Close()

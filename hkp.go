@@ -3,7 +3,11 @@
 package hkp
 
 import (
+	"io"
 	"strings"
+
+	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/armor"
 )
 
 // Base is the base path for the HTTP API.
@@ -42,4 +46,20 @@ type LookupRequest struct {
 	Search string
 	Options LookupOptions
 	Exact bool
+}
+
+func serializeArmoredKeyRing(w io.Writer, el openpgp.EntityList) error {
+	aw, err := armor.Encode(w, openpgp.PublicKeyType, nil)
+	if err != nil {
+		return err
+	}
+	defer aw.Close()
+
+	for _, e := range el {
+		if err := e.Serialize(aw); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

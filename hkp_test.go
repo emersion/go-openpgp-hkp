@@ -22,7 +22,9 @@ func init() {
 	}
 }
 
-type mockBackend struct {}
+type mockBackend struct {
+	added openpgp.EntityList
+}
 
 func (mb *mockBackend) Get(req *hkp.LookupRequest) (openpgp.EntityList, error) {
 	return stallmanPubkey, nil
@@ -40,7 +42,12 @@ func (mb *mockBackend) Index(req *hkp.LookupRequest) ([]hkp.IndexKey, error) {
 	return keys, nil
 }
 
-func TestHandler_lookup(t *testing.T) {
+func (mb *mockBackend) Add(keys openpgp.EntityList) error {
+	mb.added = append(mb.added, keys...)
+	return nil
+}
+
+func Test_index(t *testing.T) {
 	h := hkp.Handler{Lookuper: &mockBackend{}}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
@@ -76,7 +83,7 @@ func TestHandler_lookup(t *testing.T) {
 	}
 }
 
-func TestHandler_get(t *testing.T) {
+func Test_get(t *testing.T) {
 	h := hkp.Handler{Lookuper: &mockBackend{}}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
@@ -93,6 +100,23 @@ func TestHandler_get(t *testing.T) {
 		t.Errorf("Client.Get: got %v key, want 1", len(keys))
 	} else if !bytes.Equal(keys[0].PrimaryKey.Fingerprint[:], stallmanPubkey[0].PrimaryKey.Fingerprint[:]) {
 		t.Errorf("Client.Get: got %+v, want %+v", keys[0], stallmanPubkey[0])
+	}
+}
+
+func Test_add(t *testing.T) {
+	mb := mockBackend{}
+	h := hkp.Handler{Adder: &mb}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+
+	c := hkp.Client{Host: ts.URL, Insecure: true}
+
+	if err := c.Add(stallmanPubkey); err != nil {
+		t.Fatalf("Client.Add(): %v", err)
+	}
+
+	if len(mb.added) != 1 {
+		t.Errorf("want 1 key added, got %v", len(mb.added))
 	}
 }
 

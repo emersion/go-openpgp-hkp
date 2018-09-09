@@ -1,6 +1,7 @@
 package hkp
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"net/url"
@@ -98,8 +99,33 @@ func (c *Client) Get(req *LookupRequest) (openpgp.EntityList, error) {
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, ErrNotFound
 	} else if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("hkp: failed to get index: %v %v", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("hkp: failed to get key: %v %v", resp.StatusCode, resp.Status)
 	}
 
 	return openpgp.ReadArmoredKeyRing(resp.Body)
+}
+
+func (c *Client) Add(el openpgp.EntityList) error {
+	u, err := c.url(addPath)
+	if err != nil {
+		return err
+	}
+
+	var b bytes.Buffer
+	if err := serializeArmoredKeyRing(&b, el); err != nil {
+		return err
+	}
+
+	v := url.Values{}
+	v.Set("keytext", b.String())
+
+	resp, err := http.PostForm(u.String(), v)
+	if err != nil {
+		return err
+	} else if resp.StatusCode / 100 != 2 {
+		return fmt.Errorf("hkp: failed to add key: %v %v", resp.StatusCode, resp.Status)
+	}
+	defer resp.Body.Close()
+
+	return nil
 }
