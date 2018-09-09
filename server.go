@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strings"
 
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
@@ -14,16 +13,6 @@ var (
 	ErrNotFound = errors.New("hkp: not found")
 	ErrForbidden = errors.New("hkp: forbidden")
 )
-
-type LookupOptions struct {
-	NoModification bool
-}
-
-type LookupRequest struct {
-	Search string
-	Options LookupOptions
-	Exact bool
-}
 
 type Lookuper interface {
 	Get(req *LookupRequest) (*openpgp.Entity, error)
@@ -61,23 +50,14 @@ func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := r.URL.Query()
-	op := q.Get("op")
-
-	optionsList := strings.Split(q.Get("options"), ",")
-	options := make(map[string]bool)
-	for _, opt := range optionsList {
-		options[opt] = true
-	}
 
 	req := LookupRequest{
 		Search: q.Get("search"),
-		Options: LookupOptions{
-			NoModification: options["nm"],
-		},
+		Options: *parseLookupOptions(q.Get("options")),
 		Exact: q.Get("exact") == "on",
 	}
 
-	switch op {
+	switch q.Get("op") {
 	case "get":
 		e, err := h.Lookuper.Get(&req)
 		if err != nil {
