@@ -27,10 +27,17 @@ type mockBackend struct {
 }
 
 func (mb *mockBackend) Get(req *hkp.LookupRequest) (openpgp.EntityList, error) {
+	if req.Search != "stallman" {
+		return nil, nil
+	}
 	return stallmanPubkey, nil
 }
 
 func (mb *mockBackend) Index(req *hkp.LookupRequest) ([]hkp.IndexKey, error) {
+	if req.Search != "stallman" {
+		return nil, nil
+	}
+
 	keys := make([]hkp.IndexKey, len(stallmanPubkey))
 	for i, e := range stallmanPubkey {
 		key, err := hkp.IndexKeyFromEntity(e)
@@ -63,15 +70,15 @@ func Test_index(t *testing.T) {
 	creationTime, _ := time.Parse(time.RFC3339, "2013-07-20T18:32:38+02:00")
 	key := hkp.IndexKey{
 		CreationTime: creationTime,
-		Algo: 1,
-		Fingerprint: stallmanPubkey[0].PrimaryKey.Fingerprint,
-		BitLength: 4096,
-		Flags: 0,
+		Algo:         1,
+		Fingerprint:  stallmanPubkey[0].PrimaryKey.Fingerprint,
+		BitLength:    4096,
+		Flags:        0,
 		Identities: []hkp.IndexIdentity{
 			{
-				Name:"Richard Stallman <rms@gnu.org>",
+				Name:         "Richard Stallman <rms@gnu.org>",
 				CreationTime: creationTime,
-				Flags: 0,
+				Flags:        0,
 			},
 		},
 	}

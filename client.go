@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"net"
-	"net/url"
 	"net/http"
+	"net/url"
 	"path"
 
 	"golang.org/x/crypto/openpgp"
 )
 
 type Client struct {
-	Host string
+	Host     string
 	Insecure bool
 }
 
@@ -122,7 +122,7 @@ func (c *Client) Add(el openpgp.EntityList) error {
 	resp, err := http.PostForm(u.String(), v)
 	if err != nil {
 		return err
-	} else if resp.StatusCode / 100 != 2 {
+	} else if resp.StatusCode/100 != 2 {
 		return fmt.Errorf("hkp: failed to add key: %v %v", resp.StatusCode, resp.Status)
 	}
 	defer resp.Body.Close()

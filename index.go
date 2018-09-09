@@ -42,32 +42,31 @@ func ParseIndexFlags(s string) (IndexFlags, error) {
 
 func (flags IndexFlags) String() string {
 	var res []rune
-	if flags & IndexKeyRevoked != 0 {
+	if flags&IndexKeyRevoked != 0 {
 		res = append(res, 'r')
 	}
-	if flags & IndexKeyDisabled != 0 {
+	if flags&IndexKeyDisabled != 0 {
 		res = append(res, 'd')
 	}
-	if flags & IndexKeyExpired != 0 {
+	if flags&IndexKeyExpired != 0 {
 		res = append(res, 'e')
 	}
 	return string(res)
 }
 
-
 type IndexKey struct {
 	CreationTime time.Time
-	Algo packet.PublicKeyAlgorithm
-	Fingerprint [20]byte
-	BitLength int
-	Flags IndexFlags
-	Identities []IndexIdentity
+	Algo         packet.PublicKeyAlgorithm
+	Fingerprint  [20]byte
+	BitLength    int
+	Flags        IndexFlags
+	Identities   []IndexIdentity
 }
 
 type IndexIdentity struct {
-	Name string
+	Name         string
 	CreationTime time.Time
-	Flags IndexFlags
+	Flags        IndexFlags
 }
 
 // IndexKeyFromEntity creates an IndexKey from an openpgp.Entity.
@@ -82,17 +81,17 @@ func IndexKeyFromEntity(e *openpgp.Entity) (*IndexKey, error) {
 	idents := make([]IndexIdentity, 0, len(e.Identities))
 	for _, ident := range e.Identities {
 		idents = append(idents, IndexIdentity{
-			Name: ident.Name,
+			Name:         ident.Name,
 			CreationTime: ident.SelfSignature.CreationTime,
 		})
 	}
 
 	return &IndexKey{
 		CreationTime: key.CreationTime,
-		Algo: key.PubKeyAlgo,
-		Fingerprint: key.Fingerprint,
-		BitLength: int(bitLen),
-		Identities: idents,
+		Algo:         key.PubKeyAlgo,
+		Fingerprint:  key.Fingerprint,
+		BitLength:    int(bitLen),
+		Identities:   idents,
 	}, nil
 }
 
@@ -193,10 +192,10 @@ func ReadIndex(r io.Reader) ([]IndexKey, error) {
 
 			keys = append(keys, IndexKey{
 				CreationTime: time.Unix(creationTime, 0),
-				Algo: packet.PublicKeyAlgorithm(algo),
-				Fingerprint: fingerprint,
-				BitLength: bitLen,
-				Flags: flags,
+				Algo:         packet.PublicKeyAlgorithm(algo),
+				Fingerprint:  fingerprint,
+				BitLength:    bitLen,
+				Flags:        flags,
 			})
 		case "uid":
 			if len(keys) == 0 {
@@ -219,11 +218,11 @@ func ReadIndex(r io.Reader) ([]IndexKey, error) {
 				return keys, err
 			}
 
-			lastKey := &keys[len(keys) - 1]
+			lastKey := &keys[len(keys)-1]
 			lastKey.Identities = append(lastKey.Identities, IndexIdentity{
-				Name: name,
+				Name:         name,
 				CreationTime: time.Unix(creationTime, 0),
-				Flags: flags,
+				Flags:        flags,
 			})
 		default:
 			return keys, errors.New("hkp: invalid index line type")

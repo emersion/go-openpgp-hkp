@@ -15,7 +15,7 @@ const Base = "/pks"
 
 const (
 	lookupPath = Base + "/lookup"
-	addPath = Base + "/add"
+	addPath    = Base + "/add"
 )
 
 type LookupOptions struct {
@@ -43,9 +43,9 @@ func parseLookupOptions(s string) *LookupOptions {
 }
 
 type LookupRequest struct {
-	Search string
+	Search  string
 	Options LookupOptions
-	Exact bool
+	Exact   bool
 }
 
 func serializeArmoredKeyRing(w io.Writer, el openpgp.EntityList) error {

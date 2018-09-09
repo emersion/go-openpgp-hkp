@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("hkp: not found")
+	ErrNotFound  = errors.New("hkp: not found")
 	ErrForbidden = errors.New("hkp: forbidden")
 )
 
@@ -35,7 +35,7 @@ func httpError(w http.ResponseWriter, err error) {
 
 type Handler struct {
 	Lookuper Lookuper
-	Adder Adder
+	Adder    Adder
 }
 
 func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
@@ -51,9 +51,9 @@ func (h *Handler) serveLookup(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	req := LookupRequest{
-		Search: q.Get("search"),
+		Search:  q.Get("search"),
 		Options: *parseLookupOptions(q.Get("options")),
-		Exact: q.Get("exact") == "on",
+		Exact:   q.Get("exact") == "on",
 	}
 
 	switch q.Get("op") {
