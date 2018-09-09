@@ -78,6 +78,10 @@ func (c *Client) Index(req *LookupRequest) ([]IndexKey, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("hkp: failed to get index: %v %v", resp.StatusCode, resp.Status)
+	}
+
 	return ReadIndex(resp.Body)
 }
 
@@ -87,6 +91,12 @@ func (c *Client) Get(req *LookupRequest) (openpgp.EntityList, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, ErrNotFound
+	} else if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("hkp: failed to get index: %v %v", resp.StatusCode, resp.Status)
+	}
 
 	return openpgp.ReadArmoredKeyRing(resp.Body)
 }
