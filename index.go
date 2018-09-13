@@ -15,6 +15,26 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
+func primarySelfSignature(e *openpgp.Entity) *packet.Signature {
+	var selfSig *packet.Signature
+	for _, ident := range e.Identities {
+		if selfSig == nil {
+			selfSig = ident.SelfSignature
+		} else if ident.SelfSignature.IsPrimaryId != nil && *ident.SelfSignature.IsPrimaryId {
+			return ident.SelfSignature
+		}
+	}
+	return selfSig
+}
+
+func signatureExpirationTime(sig *packet.Signature) time.Time {
+	if sig.KeyLifetimeSecs == nil {
+		return time.Time{}
+	}
+	dur := time.Duration(*sig.KeyLifetimeSecs) * time.Second
+	return sig.CreationTime.Add(dur)
+}
+
 const indexVersion = 1
 
 type IndexFlags int
@@ -55,23 +75,26 @@ func (flags IndexFlags) format() string {
 }
 
 type IndexKey struct {
-	CreationTime time.Time
-	Algo         packet.PublicKeyAlgorithm
-	Fingerprint  [20]byte
-	BitLength    int
-	Flags        IndexFlags
-	Identities   []IndexIdentity
+	CreationTime   time.Time
+	ExpirationTime time.Time
+	Algo           packet.PublicKeyAlgorithm
+	Fingerprint    [20]byte
+	BitLength      int
+	Flags          IndexFlags
+	Identities     []IndexIdentity
 }
 
 type IndexIdentity struct {
-	Name         string
-	CreationTime time.Time
-	Flags        IndexFlags
+	Name           string
+	CreationTime   time.Time
+	ExpirationTime time.Time
+	Flags          IndexFlags
 }
 
 // IndexKeyFromEntity creates an IndexKey from an openpgp.Entity.
 func IndexKeyFromEntity(e *openpgp.Entity) (*IndexKey, error) {
 	key := e.PrimaryKey
+	sig := primarySelfSignature(e)
 
 	bitLen, err := key.BitLength()
 	if err != nil {
@@ -81,18 +104,27 @@ func IndexKeyFromEntity(e *openpgp.Entity) (*IndexKey, error) {
 	idents := make([]IndexIdentity, 0, len(e.Identities))
 	for _, ident := range e.Identities {
 		idents = append(idents, IndexIdentity{
-			Name:         ident.Name,
-			CreationTime: ident.SelfSignature.CreationTime,
+			Name:           ident.Name,
+			CreationTime:   ident.SelfSignature.CreationTime,
+			ExpirationTime: signatureExpirationTime(ident.SelfSignature),
 		})
 	}
 
 	return &IndexKey{
-		CreationTime: key.CreationTime,
-		Algo:         key.PubKeyAlgo,
-		Fingerprint:  key.Fingerprint,
-		BitLength:    int(bitLen),
-		Identities:   idents,
+		CreationTime:   key.CreationTime,
+		ExpirationTime: signatureExpirationTime(sig),
+		Algo:           key.PubKeyAlgo,
+		Fingerprint:    key.Fingerprint,
+		BitLength:      int(bitLen),
+		Identities:     idents,
 	}, nil
+}
+
+func formatTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return fmt.Sprintf("%d", t.Unix())
 }
 
 // writeIndex writes a machine-readable key index to w.
@@ -103,19 +135,19 @@ func writeIndex(w io.Writer, keys []IndexKey) error {
 	}
 
 	for _, key := range keys {
-		// TODO: expiration time, if any
-		_, err = fmt.Fprintf(w, "pub:%X:%d:%d:%d:%s:%s\n",
+		_, err = fmt.Fprintf(w, "pub:%X:%d:%d:%s:%s:%s\n",
 			key.Fingerprint[:], key.Algo, key.BitLength,
-			key.CreationTime.Unix(), "", key.Flags.format())
+			formatTime(key.CreationTime), formatTime(key.ExpirationTime),
+			key.Flags.format())
 		if err != nil {
 			return err
 		}
 
 		for _, ident := range key.Identities {
 			name := url.PathEscape(ident.Name)
-			// TODO: expiration time, if any
-			_, err = fmt.Fprintf(w, "uid:%s:%d:%s:%s\n",
-				name, ident.CreationTime.Unix(), "", ident.Flags.format())
+			_, err = fmt.Fprintf(w, "uid:%s:%s:%s:%s\n",
+				name, formatTime(ident.CreationTime),
+				formatTime(ident.ExpirationTime), ident.Flags.format())
 			if err != nil {
 				return err
 			}
@@ -123,6 +155,17 @@ func writeIndex(w io.Writer, keys []IndexKey) error {
 	}
 
 	return nil
+}
+
+func parseTime(s string) (time.Time, error) {
+	if s == "" {
+		return time.Time{}, nil
+	}
+	sec, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(sec, 0), nil
 }
 
 func readIndex(r io.Reader) ([]IndexKey, error) {
@@ -176,7 +219,11 @@ func readIndex(r io.Reader) ([]IndexKey, error) {
 			if err != nil {
 				return keys, err
 			}
-			creationTime, err := strconv.ParseInt(fields[4], 10, 64)
+			creationTime, err := parseTime(fields[4])
+			if err != nil {
+				return keys, err
+			}
+			expirationTime, err := parseTime(fields[5])
 			if err != nil {
 				return keys, err
 			}
@@ -186,11 +233,12 @@ func readIndex(r io.Reader) ([]IndexKey, error) {
 			}
 
 			keys = append(keys, IndexKey{
-				CreationTime: time.Unix(creationTime, 0),
-				Algo:         packet.PublicKeyAlgorithm(algo),
-				Fingerprint:  fingerprint,
-				BitLength:    bitLen,
-				Flags:        flags,
+				CreationTime:   creationTime,
+				ExpirationTime: expirationTime,
+				Algo:           packet.PublicKeyAlgorithm(algo),
+				Fingerprint:    fingerprint,
+				BitLength:      bitLen,
+				Flags:          flags,
 			})
 		case "uid":
 			if len(keys) == 0 {
@@ -204,7 +252,11 @@ func readIndex(r io.Reader) ([]IndexKey, error) {
 			if err != nil {
 				return keys, err
 			}
-			creationTime, err := strconv.ParseInt(fields[2], 10, 64)
+			creationTime, err := parseTime(fields[2])
+			if err != nil {
+				return keys, err
+			}
+			expirationTime, err := parseTime(fields[3])
 			if err != nil {
 				return keys, err
 			}
@@ -215,9 +267,10 @@ func readIndex(r io.Reader) ([]IndexKey, error) {
 
 			lastKey := &keys[len(keys)-1]
 			lastKey.Identities = append(lastKey.Identities, IndexIdentity{
-				Name:         name,
-				CreationTime: time.Unix(creationTime, 0),
-				Flags:        flags,
+				Name:           name,
+				CreationTime:   creationTime,
+				ExpirationTime: expirationTime,
+				Flags:          flags,
 			})
 		}
 	}
