@@ -103,11 +103,10 @@ func writeIndex(w io.Writer, keys []IndexKey) error {
 	}
 
 	for _, key := range keys {
-		fingerprint := hex.EncodeToString(key.Fingerprint[:])
 		// TODO: expiration time, if any
-		_, err = fmt.Fprintf(w, "pub:%s:%d:%d:%d:%s:%s\n",
-			fingerprint, key.Algo, key.BitLength, key.CreationTime.Unix(),
-			"", key.Flags.format())
+		_, err = fmt.Fprintf(w, "pub:%X:%d:%d:%d:%s:%s\n",
+			key.Fingerprint[:], key.Algo, key.BitLength,
+			key.CreationTime.Unix(), "", key.Flags.format())
 		if err != nil {
 			return err
 		}
