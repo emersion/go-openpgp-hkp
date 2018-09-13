@@ -152,10 +152,6 @@ func readIndex(r io.Reader) ([]IndexKey, error) {
 
 	var keys []IndexKey
 	for scanner.Scan() {
-		if scanner.Text() == "" {
-			continue
-		}
-
 		fields := strings.Split(scanner.Text(), ":")
 		switch fields[0] {
 		case "pub":
@@ -224,8 +220,6 @@ func readIndex(r io.Reader) ([]IndexKey, error) {
 				CreationTime: time.Unix(creationTime, 0),
 				Flags:        flags,
 			})
-		default:
-			return keys, errors.New("hkp: invalid index line type")
 		}
 	}
 
