@@ -127,6 +127,30 @@ func Test_add(t *testing.T) {
 	}
 }
 
+func TestKeyIDSearch(t *testing.T) {
+	shortKeyIDSearch := hkp.ParseKeyIDSearch("0x2A8E4C02")
+	if id := shortKeyIDSearch.KeyIdShort(); id == nil {
+		t.Errorf("short.KeyIdShort() = nil, want non-nil")
+	} else if *id != 0x2A8E4C02 {
+		t.Errorf("short.KeyIdShort() = 0x%X, want 0x%X", *id, 0x2A8E4C02)
+	}
+	if fingerprint := shortKeyIDSearch.Fingerprint(); fingerprint != nil {
+		t.Errorf("short.Fingerprint() = %v, want nil", *fingerprint)
+	}
+
+	fingerprintIDSearch := hkp.ParseKeyIDSearch("0x67819B343B2AB70DED9320872C6464AF2A8E4C02")
+	if id := fingerprintIDSearch.KeyId(); id == nil {
+		t.Errorf("fingerprint.KeyId() = nil, want non-nil")
+	} else if *id != 0x2C6464AF2A8E4C02 {
+		t.Errorf("fingerprint.KeyId() = 0x%X, want 0x%X", id, 0x2C6464AF2A8E4C02)
+	}
+	if fingerprint := fingerprintIDSearch.Fingerprint(); fingerprint == nil {
+		t.Errorf("fingerprint.Fingerprint() = nil, want non-nil")
+	} else if !bytes.Equal((*fingerprint)[:], stallmanPubkey[0].PrimaryKey.Fingerprint[:]) {
+		t.Errorf("fingerprint.Fingerprint() = %v, want %v", *fingerprint, stallmanPubkey[0].PrimaryKey.Fingerprint)
+	}
+}
+
 const stallmanPubkeyStr = `-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.10 (GNU/Linux)
 

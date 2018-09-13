@@ -3,6 +3,8 @@
 package hkp
 
 import (
+	"encoding/binary"
+	"encoding/hex"
 	"io"
 	"strings"
 
@@ -62,4 +64,69 @@ func serializeArmoredKeyRing(w io.Writer, el openpgp.EntityList) error {
 	}
 
 	return nil
+}
+
+type KeyIDSearch []byte
+
+// ParseKeyIDSearch parses a key ID search prefixed with "0x". If the supplied
+// search isn't a key ID, returns nil.
+func ParseKeyIDSearch(search string) KeyIDSearch {
+	if !strings.HasPrefix(search, "0x") {
+		return nil
+	}
+	b, err := hex.DecodeString(search[2:])
+	if err != nil {
+		return nil
+	}
+	switch len(b) {
+	case 20, 8, 4:
+		return KeyIDSearch(b)
+	default:
+		return nil
+	}
+}
+
+// Fingerprint extracts a fingerprint from a key ID search. It returns nil if
+// the search doesn't contain a fingerprint.
+func (search KeyIDSearch) Fingerprint() *[20]byte {
+	if len(search) != 20 {
+		return nil
+	}
+	var b [20]byte
+	copy(b[:], search)
+	return &b
+}
+
+// KeyId extracts a 64-bit key ID from a key ID search. It returns nil if the
+// search doesn't contain a 64-bit key ID.
+func (search KeyIDSearch) KeyId() *uint64 {
+	var b []byte
+	switch len(search) {
+	case 20:
+		b = search[12:20]
+	case 8:
+		b = search
+	default:
+		return nil
+	}
+	keyID := binary.BigEndian.Uint64(b)
+	return &keyID
+}
+
+// KeyIdShort extracts a 32-bit key ID from a key ID search. It returns nil if
+// the search doesn't contain a 32-bit key ID.
+func (search KeyIDSearch) KeyIdShort() *uint32 {
+	var b []byte
+	switch len(search) {
+	case 20:
+		b = search[16:20]
+	case 8:
+		b = search[4:8]
+	case 4:
+		b = search
+	default:
+		return nil
+	}
+	keyID := binary.BigEndian.Uint32(b)
+	return &keyID
 }
