@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"path"
 
-	"golang.org/x/crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp"
 )
 
 type Client struct {
