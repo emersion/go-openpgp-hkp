@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/emersion/go-openpgp-hkp"
-	"golang.org/x/crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp"
+	hkp "github.com/emersion/go-openpgp-hkp"
 )
 
 var stallmanPubkey openpgp.EntityList
@@ -67,7 +67,7 @@ func Test_index(t *testing.T) {
 		t.Fatalf("Client.Index(): %v", err)
 	}
 
-	creationTime, _ := time.Parse(time.RFC3339, "2013-07-20T18:32:38+02:00")
+	creationTime, _ := time.Parse(time.RFC3339, "2013-07-20T12:32:38-04:00")
 	key := hkp.IndexKey{
 		CreationTime: creationTime,
 		Algo:         1,

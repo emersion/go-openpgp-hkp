@@ -208,7 +208,7 @@ func readIndex(r io.Reader) ([]IndexKey, error) {
 			if len(fingerprintSlice) != 20 {
 				return keys, errors.New("hkp: invalid fingerprint size")
 			}
-			var fingerprint []byte
+			fingerprint := make([]byte, 20)
 			copy(fingerprint[:], fingerprintSlice)
 
 			algo, err := strconv.Atoi(fields[2])

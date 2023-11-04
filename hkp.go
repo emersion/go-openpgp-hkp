@@ -88,11 +88,11 @@ func ParseKeyIDSearch(search string) KeyIDSearch {
 
 // Fingerprint extracts a fingerprint from a key ID search. It returns nil if
 // the search doesn't contain a fingerprint.
-func (search KeyIDSearch) Fingerprint() *[20]byte {
+func (search KeyIDSearch) Fingerprint() *[]byte {
 	if len(search) != 20 {
 		return nil
 	}
-	var b [20]byte
+	b := make([]byte, 20)
 	copy(b[:], search)
 	return &b
 }
