@@ -201,15 +201,13 @@ func readIndex(r io.Reader) ([]IndexKey, error) {
 				return keys, errors.New("hkp: failed to parse pub")
 			}
 
-			fingerprintSlice, err := hex.DecodeString(fields[1])
+			fingerprint, err := hex.DecodeString(fields[1])
 			if err != nil {
 				return keys, err
 			}
-			if len(fingerprintSlice) != 20 {
+			if len(fingerprint) != 20 {
 				return keys, errors.New("hkp: invalid fingerprint size")
 			}
-			fingerprint := make([]byte, 20)
-			copy(fingerprint[:], fingerprintSlice)
 
 			algo, err := strconv.Atoi(fields[2])
 			if err != nil {

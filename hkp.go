@@ -88,13 +88,11 @@ func ParseKeyIDSearch(search string) KeyIDSearch {
 
 // Fingerprint extracts a fingerprint from a key ID search. It returns nil if
 // the search doesn't contain a fingerprint.
-func (search KeyIDSearch) Fingerprint() *[]byte {
+func (search KeyIDSearch) Fingerprint() []byte {
 	if len(search) != 20 {
 		return nil
 	}
-	b := make([]byte, 20)
-	copy(b[:], search)
-	return &b
+	return []byte(search)
 }
 
 // KeyId extracts a 64-bit key ID from a key ID search. It returns nil if the
