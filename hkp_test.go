@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/emersion/go-openpgp-hkp"
-	"golang.org/x/crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp"
+	hkp "github.com/emersion/go-openpgp-hkp"
 )
 
 var stallmanPubkey openpgp.EntityList
@@ -69,7 +69,7 @@ func Test_index(t *testing.T) {
 
 	creationTime, _ := time.Parse(time.RFC3339, "2013-07-20T18:32:38+02:00")
 	key := hkp.IndexKey{
-		CreationTime: creationTime,
+		CreationTime: creationTime.Local(),
 		Algo:         1,
 		Fingerprint:  stallmanPubkey[0].PrimaryKey.Fingerprint,
 		BitLength:    4096,
@@ -77,7 +77,7 @@ func Test_index(t *testing.T) {
 		Identities: []hkp.IndexIdentity{
 			{
 				Name:         "Richard Stallman <rms@gnu.org>",
-				CreationTime: creationTime,
+				CreationTime: creationTime.Local(),
 				Flags:        0,
 			},
 		},
@@ -135,7 +135,7 @@ func TestKeyIDSearch(t *testing.T) {
 		t.Errorf("short.KeyIdShort() = 0x%X, want 0x%X", *id, 0x2A8E4C02)
 	}
 	if fingerprint := shortKeyIDSearch.Fingerprint(); fingerprint != nil {
-		t.Errorf("short.Fingerprint() = %v, want nil", *fingerprint)
+		t.Errorf("short.Fingerprint() = %v, want nil", fingerprint)
 	}
 
 	fingerprintIDSearch := hkp.ParseKeyIDSearch("0x67819B343B2AB70DED9320872C6464AF2A8E4C02")
@@ -146,8 +146,8 @@ func TestKeyIDSearch(t *testing.T) {
 	}
 	if fingerprint := fingerprintIDSearch.Fingerprint(); fingerprint == nil {
 		t.Errorf("fingerprint.Fingerprint() = nil, want non-nil")
-	} else if !bytes.Equal((*fingerprint)[:], stallmanPubkey[0].PrimaryKey.Fingerprint[:]) {
-		t.Errorf("fingerprint.Fingerprint() = %v, want %v", *fingerprint, stallmanPubkey[0].PrimaryKey.Fingerprint)
+	} else if !bytes.Equal((fingerprint)[:], stallmanPubkey[0].PrimaryKey.Fingerprint[:]) {
+		t.Errorf("fingerprint.Fingerprint() = %v, want %v", fingerprint, stallmanPubkey[0].PrimaryKey.Fingerprint)
 	}
 }
 

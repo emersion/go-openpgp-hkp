@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/packet"
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 )
 
 func primarySelfSignature(e *openpgp.Entity) *packet.Signature {
@@ -78,7 +78,7 @@ type IndexKey struct {
 	CreationTime   time.Time
 	ExpirationTime time.Time
 	Algo           packet.PublicKeyAlgorithm
-	Fingerprint    [20]byte
+	Fingerprint    []byte
 	BitLength      int
 	Flags          IndexFlags
 	Identities     []IndexIdentity
@@ -201,15 +201,13 @@ func readIndex(r io.Reader) ([]IndexKey, error) {
 				return keys, errors.New("hkp: failed to parse pub")
 			}
 
-			fingerprintSlice, err := hex.DecodeString(fields[1])
+			fingerprint, err := hex.DecodeString(fields[1])
 			if err != nil {
 				return keys, err
 			}
-			if len(fingerprintSlice) != 20 {
+			if len(fingerprint) != 20 {
 				return keys, errors.New("hkp: invalid fingerprint size")
 			}
-			var fingerprint [20]byte
-			copy(fingerprint[:], fingerprintSlice)
 
 			algo, err := strconv.Atoi(fields[2])
 			if err != nil {

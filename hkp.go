@@ -8,8 +8,8 @@ import (
 	"io"
 	"strings"
 
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
 )
 
 // Base is the base path for the HTTP API.
@@ -88,13 +88,11 @@ func ParseKeyIDSearch(search string) KeyIDSearch {
 
 // Fingerprint extracts a fingerprint from a key ID search. It returns nil if
 // the search doesn't contain a fingerprint.
-func (search KeyIDSearch) Fingerprint() *[20]byte {
+func (search KeyIDSearch) Fingerprint() []byte {
 	if len(search) != 20 {
 		return nil
 	}
-	var b [20]byte
-	copy(b[:], search)
-	return &b
+	return []byte(search)
 }
 
 // KeyId extracts a 64-bit key ID from a key ID search. It returns nil if the
